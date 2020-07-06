@@ -14,11 +14,16 @@ HTTP/1.0" 302 528 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US;
 rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6"
 """
 
+__author__ = "Kenneth Pinkerton with help from David R to get the flag working for -d"
+
+import argparse
 import os
 import re
 import sys
-import urllib.request
-import argparse
+if sys.version_info[0] >= 3:
+    from urllib.request import urlretrieve
+else:
+    from urllib import urlretrieve
 
 
 def read_urls(filename):
@@ -26,8 +31,17 @@ def read_urls(filename):
     extracting the hostname from the filename itself, sorting
     alphabetically in increasing order, and screening out duplicates.
     """
-    # +++your code here+++
-    pass
+    server = filename[re.search(r"_(.*?)", filename).span()[1]:]
+    urls = []
+    with open(filename, "r") as f:
+        for line in f:
+            paths = re.findall(r'GET \S+ HTTP', line)
+            for path in paths:
+                if path[5:-5] not in urls and "puzzle" in path:
+                    urls.append(path[5:-5])
+            urls.sort(key=lambda x: x[-8:-4])
+    urls = list(map(lambda each: "http://"+server + "/" + each, urls))
+    return urls
 
 
 def download_images(img_urls, dest_dir):
@@ -38,8 +52,19 @@ def download_images(img_urls, dest_dir):
     to show each local image file.
     Creates the directory if necessary.
     """
-    # +++your code here+++
-    pass
+    if not os.path.isdir(dest_dir):
+        os.makedirs(dest_dir)
+        print('dir made')
+    index_html = '<html><body>'
+    for index, url in enumerate(img_urls):
+        image_name = 'img' + str(index)
+        print('Retrieving {}'.format(url))
+        urlretrieve(url, dest_dir + "/" + image_name)
+        index_html += '<img src={}></img>'.format(image_name)
+    index_html += '</body></html>'
+
+    with open(dest_dir + '/index.html', 'w') as w_index:
+        w_index.write(index_html)
 
 
 def create_parser():
